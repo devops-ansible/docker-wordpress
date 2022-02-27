@@ -1,7 +1,7 @@
 ARG REG=""
 ARG REP="devopsansiblede"
 ARG IMG="apache"
-ARG VRS="latest"
+ARG VRS="php8"
 ARG SRC="${REG}${REP}/${IMG}:${VRS}"
 
 FROM "${SRC}"
