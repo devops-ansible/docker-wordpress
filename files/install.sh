@@ -103,7 +103,9 @@ apachecheck='^.*\[\[ "\$1" == apache2\* \]\].*'
 # `$1` parameter is not transfered to the boot script – so we have to change the check to a regular variable
 sed -i '/'"${apachecheck}"'/i myversion="apache2"' /boot.d/wp.sh
 # replace each `$1` within the matching row and the two following rows ...
-sed -i '/'"${apachecheck}"'/{N;N;s/$1/$myversion/g}' /boot.d/wp.sh
+sed -i '/'"${apachecheck}"'/{N;N;s/$1/${myversion}/g}' /boot.d/wp.sh
+# additionally the case check for runtime user has to be adjusted
+sed -i 's/$1/${myversion}/g' /boot.d/wp.sh
 # this script is not meant to start the wordpress apache service ...
 sed -i '/exec "$@"/d' /boot.d/wp.sh
 
