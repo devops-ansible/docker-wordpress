@@ -97,6 +97,8 @@ phpversion=$( php <<EOF
 echo "php".PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION."\n\n";
 EOF
 )
+# fetch wp docker config template
+curl -u ${WORKINGUSER}:$( id -gn ${WORKINGUSER} ) -o /usr/src/wordpress/wp-config-docker.php -fSL "https://raw.githubusercontent.com/docker-library/wordpress/master/latest/${phpversion}/apache/wp-config-docker.php"
 # fetch relevant entrypoint file
 curl -o /boot.d/wp.sh -fSL "https://raw.githubusercontent.com/docker-library/wordpress/master/latest/${phpversion}/apache/docker-entrypoint.sh"
 apachecheck='^.*\[\[ "\$1" == apache2\* \]\].*'
