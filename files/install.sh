@@ -103,7 +103,7 @@ curl -u ${WORKINGUSER}:$( id -gn ${WORKINGUSER} ) -o /usr/src/wordpress/wp-confi
 curl -o /boot.d/wp.sh -fSL "https://raw.githubusercontent.com/docker-library/wordpress/master/latest/${phpversion}/apache/docker-entrypoint.sh"
 apachecheck='^.*\[\[ "\$1" == apache2\* \]\].*'
 # `$1` parameter is not transfered to the boot script – so we have to change the check to a regular variable
-sed -i '/'"${apachecheck}"'/i myversion="apache2"' /boot.d/wp.sh
+sed -i '/'"${apachecheck}"'/i myversion="apache2"\ncd ${APACHE_WORKDIR}' /boot.d/wp.sh
 # replace each `$1` within the matching row and the two following rows ...
 sed -i '/'"${apachecheck}"'/{N;N;s/$1/${myversion}/g}' /boot.d/wp.sh
 # additionally the case check for runtime user has to be adjusted
