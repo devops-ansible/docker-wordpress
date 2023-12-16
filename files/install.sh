@@ -121,6 +121,22 @@ if [[ -f  wp-config.php ]]; then
     grep -qxF "define( 'WP_DEBUG_DISPLAY', false);" wp-config.php || sed -i "/define( 'WP_DEBUG_LOG', true);/a define( 'WP_DEBUG_DISPLAY', false);" wp-config.php
 fi
 
+if [[ ! -f "${APACHE_WORKDIR}/.htaccess" ]]; then
+    cat <<EOF >>"${APACHE_WORKDIR}/.htaccess"
+# BEGIN WordPress
+
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+
+# END WordPress
+EOF
+fi
+
 EOT
 fi
 
