@@ -132,7 +132,7 @@ $envs = array_filter(array_map( function( $element ) {
 
 foreach ($envs as $env) {
     if ($env != 'CONFIG_EXTRA' and !defined($env)) {
-        define($env, getenv_docker($env));
+        define($env, getenv($env));
     }
 }
 
