@@ -9,7 +9,9 @@ FROM "${SRC}"
 MAINTAINER macwinnie <dev@macwinnie.me>
 
 # environmental variables
+ENV START_CRON=1
 ENV WORDPRESS_CONFIG_EXTRA=""
+ENV WORDPRESS_DISABLE_WP_CRON="true"
 
 # copy all relevant files
 COPY files/ /

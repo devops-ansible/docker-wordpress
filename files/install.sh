@@ -115,14 +115,42 @@ sed -i '/exec "$@"/d' /boot.d/wp.sh
 # define( 'WP_DEBUG_LOG', true); activate logfile if set to true, the path will be wp-content/debug.log. To change the PATH to the logfile change true to the new 'path'
 # define( 'WP_DEBUG_DISPLAY', false ) deactivate the return of error and warnings on the webpage itself. Needs to be set to false in production!!!
 if [[ -f /boot.d/wp.sh ]]; then
-cat <<EOT >>/boot.d/wp.sh
-if [[ -f  wp-config.php ]]; then
-    grep -qxF "define( 'WP_DEBUG_LOG', true);" wp-config.php || sed -i "/define( 'WP_DEBUG', true);/a define( 'WP_DEBUG_LOG', true);" wp-config.php
-    grep -qxF "define( 'WP_DEBUG_DISPLAY', false);" wp-config.php || sed -i "/define( 'WP_DEBUG_LOG', true);/a define( 'WP_DEBUG_DISPLAY', false);" wp-config.php
+cat <<'EOT' >>/boot.d/wp.sh
+if [[ -f "${APACHE_WORKDIR}/wp-config.php" ]]; then
+    rx='s/^(.*require_once.+wp-settings\.php.*)$/'
+    rp="$( sed -En "${rx}\1/p" wp-config.php )"
+    sed -Ei "${rx}/p" wp-config.php
+
+    cat <<'EOF' >> "${APACHE_WORKDIR}/wp-config.php"
+$envs = array_filter(array_map( function( $element ) {
+    $rx = '/^WORDPRESS_(.+)$/i';
+    $rpl = preg_replace($rx, '${1}', $element);
+    if ($rpl != $element) {
+        return $rpl;
+    }
+}, array_keys( getenv() ) ));
+
+foreach ($envs as $env) {
+    if ($env != 'CONFIG_EXTRA' and !defined($env)) {
+        define($env, getenv_docker($env));
+    }
+}
+
+if (WP_DEBUG) {
+    if (!defined('WP_DEBUG_LOG')) {
+        define( 'WP_DEBUG_LOG', true );
+    }
+    if (!defined('WP_DEBUG_DISPLAY')) {
+        define( 'WP_DEBUG_DISPLAY', false );
+    }
+}
+EOF
+
+    echo "${rp}" >> "${APACHE_WORKDIR}/wp-config.php"
 fi
 
 if [[ ! -f "${APACHE_WORKDIR}/.htaccess" ]]; then
-    cat <<EOF >>"${APACHE_WORKDIR}/.htaccess"
+    cat <<'EOF' >>"${APACHE_WORKDIR}/.htaccess"
 # BEGIN WordPress
 
 RewriteEngine On
@@ -139,6 +167,11 @@ fi
 
 EOT
 fi
+
+cat <<EOF > /etc/cron.d/wordpress
+# mnt hr  dy  mnth dow usr      cmd
+  *   *   *   *    *   www-data /usr/bin/curl 'http://127.0.0.1/wp-cron.php' >/dev/null 2>&1
+EOF
 
 ###
 ## Install WP-CLI
