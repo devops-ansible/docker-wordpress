@@ -92,15 +92,26 @@ chown -R www-data:www-data /usr/src/wordpress
 # entrypoint of current wordpress repo should be executed on every boot ... but no apache start =D
 
 # current php version
-phpversion=$( php <<EOF
+php_major=$( php <<EOF
 <?php
-echo "php".PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION."\n\n";
+echo PHP_MAJOR_VERSION;
 EOF
 )
+php_minor=$( php <<EOF
+<?php
+echo PHP_MINOR_VERSION;
+EOF
+)
+wp_config_url_prefix="https://raw.githubusercontent.com/docker-library/wordpress/master/latest/"
+status_code=$(curl --write-out %{http_code} --silent --output /dev/null "${wp_config_url_prefix}php${php_major}.${php_minor}/apache/Dockerfile")
+if [[ "${status_code}" -ne 200 ]] ; then
+    php_minor=$((php_minor-1))
+fi
+phpversion="${php_major}.${php_minor}"
 # fetch wp docker config template
-curl -u ${WORKINGUSER}:$( id -gn ${WORKINGUSER} ) -o /usr/src/wordpress/wp-config-docker.php -fSL "https://raw.githubusercontent.com/docker-library/wordpress/master/latest/${phpversion}/apache/wp-config-docker.php"
+curl -u ${WORKINGUSER}:$( id -gn ${WORKINGUSER} ) -o /usr/src/wordpress/wp-config-docker.php -fSL "${wp_config_url_prefix}php${phpversion}/apache/wp-config-docker.php"
 # fetch relevant entrypoint file
-curl -o /boot.d/wp.sh -fSL "https://raw.githubusercontent.com/docker-library/wordpress/master/latest/${phpversion}/apache/docker-entrypoint.sh"
+curl -o /boot.d/wp.sh -fSL "${wp_config_url_prefix}php${phpversion}/apache/docker-entrypoint.sh"
 apachecheck='^.*\[\[ "\$1" == apache2\* \]\].*'
 # `$1` parameter is not transfered to the boot script – so we have to change the check to a regular variable
 sed -i '/'"${apachecheck}"'/i myversion="apache2"\ncd ${APACHE_WORKDIR}' /boot.d/wp.sh
