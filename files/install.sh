@@ -111,22 +111,22 @@ phpversion="${php_major}.${php_minor}"
 # fetch wp docker config template
 curl -u ${WORKINGUSER}:$( id -gn ${WORKINGUSER} ) -o /usr/src/wordpress/wp-config-docker.php -fSL "${wp_config_url_prefix}php${phpversion}/apache/wp-config-docker.php"
 # fetch relevant entrypoint file
-curl -o /boot.d/wp.sh -fSL "${wp_config_url_prefix}php${phpversion}/apache/docker-entrypoint.sh"
-apachecheck='^.*\[\[ "\$1" == apache2\* \]\].*'
+curl -o /boot.d/docker-ensure-installed.sh -fSL "${wp_config_url_prefix}php${phpversion}/apache/docker-entrypoint.sh"
+apachecheck='^.* == apache2\* \]\].*'
 # `$1` parameter is not transfered to the boot script – so we have to change the check to a regular variable
-sed -i '/'"${apachecheck}"'/i myversion="apache2"\ncd ${APACHE_WORKDIR}' /boot.d/wp.sh
+sed -i '/'"${apachecheck}"'/i containerVariant="apache2"\ncd ${APACHE_WORKDIR}' /boot.d/docker-ensure-installed.sh
 # replace each `$1` within the matching row and the two following rows ...
-sed -i '/'"${apachecheck}"'/{N;N;s/$1/${myversion}/g}' /boot.d/wp.sh
+sed -i '/'"${apachecheck}"'/{N;N;s/$1/${containerVariant}/g}' /boot.d/docker-ensure-installed.sh
 # additionally the case check for runtime user has to be adjusted
-sed -i 's/$1/${myversion}/g' /boot.d/wp.sh
+sed -i 's/$1/${containerVariant}/g' /boot.d/docker-ensure-installed.sh
 # this script is not meant to start the wordpress apache service ...
-sed -i '/exec "$@"/d' /boot.d/wp.sh
+sed -i '/exec "$@"/d' /boot.d/docker-ensure-installed.sh
 
 # activate logging for wordpress
 # define( 'WP_DEBUG_LOG', true); activate logfile if set to true, the path will be wp-content/debug.log. To change the PATH to the logfile change true to the new 'path'
 # define( 'WP_DEBUG_DISPLAY', false ) deactivate the return of error and warnings on the webpage itself. Needs to be set to false in production!!!
-if [[ -f /boot.d/wp.sh ]]; then
-cat <<'EOT' >>/boot.d/wp.sh
+if [[ -f /boot.d/docker-ensure-installed.sh ]]; then
+cat <<'EOT' >>/boot.d/docker-ensure-installed.sh
 if [[ -f "${APACHE_WORKDIR}/wp-config.php" ]]; then
     rx='s/^(.*require_once.+wp-settings\.php.*)$/'
     rp="$( sed -En "${rx}\1/p" wp-config.php )"
