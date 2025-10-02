@@ -14,6 +14,7 @@ apt-get -yq upgrade
 apt-get -yq install -y --no-install-recommends \
         ghostscript \
         libjpeg-dev libmagickwand-dev \
+        gettext \
 
 ###
 ## php extensions
