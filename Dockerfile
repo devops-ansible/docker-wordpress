@@ -6,7 +6,7 @@ ARG SRC="${REG}${REP}/${IMG}:${VRS}"
 
 FROM "${SRC}"
 
-MAINTAINER macwinnie <dev@macwinnie.me>
+LABEL org.opencontainers.image.authors="macwinnie <dev@macwinnie.me>"
 
 # environmental variables
 ENV START_CRON=1
