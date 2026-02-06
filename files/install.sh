@@ -20,8 +20,7 @@ apt-get -yq install -y --no-install-recommends \
 ## php extensions
 ###
 docker-php-ext-install -j "$(nproc)" \
-        bcmath \
-        opcache
+        bcmath
 
 ###
 ## WriteOut Configs
