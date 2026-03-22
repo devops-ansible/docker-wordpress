@@ -179,6 +179,94 @@ fi
 EOT
 fi
 
+# cleanup themes
+cat <<'EOF' >| /boot.d/z-cleanup-themes.sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# --- Feature-Flag (default: false) ---
+if [[ "${WORDPRESS_PRUNE_THEMES:-false}" != "true" ]]; then
+  echo "pruning themes deactivated, skipping (WORDPRESS_PRUNE_THEMES != true)"
+  exit 0
+fi
+
+WP_PATH="${WP_PATH:-/var/www/html}"
+SRC_THEME_DIR="${SRC_THEME_DIR:-/usr/src/wordpress/wp-content/themes}"
+
+log() { printf '%s\n' "$*"; }
+err() { printf 'ERROR: %s\n' "$*" >&2; }
+
+cd "$WP_PATH"
+
+command -v wp >/dev/null 2>&1 || { err "wp-cli not found"; exit 1; }
+[[ -d "$SRC_THEME_DIR" ]] || { log "no source path for themes found: $SRC_THEME_DIR"; exit 0; }
+[[ -d "$WP_PATH/wp-content/themes" ]] || { err "live path for themes missing: $WP_PATH/wp-content/themes"; exit 1; }
+
+# WP/DB reachable?
+wp core is-installed --path="$WP_PATH" --allow-root >/dev/null 2>&1 || {
+  err "WordPress not ready (not installed?) / DB not reachable"
+  exit 0
+}
+
+ACTIVE_THEME="$(wp theme list --status=active --field=name --path="$WP_PATH" --allow-root | head -n1 || true)"
+[[ -n "$ACTIVE_THEME" ]] || { err "unknown active theme"; exit 1; }
+
+log "active theme: $ACTIVE_THEME"
+
+PARENT_THEME="$(wp theme mod get template --path="$WP_PATH" --allow-root 2>/dev/null || true)"
+if [[ -n "$PARENT_THEME" && "$PARENT_THEME" != "$ACTIVE_THEME" ]]; then
+  log "Parent-Theme: $PARENT_THEME"
+else
+  PARENT_THEME=""
+fi
+
+# prune only valid WP default themes
+mapfile -t SOURCE_THEME_DIRS < <(
+  find "$SRC_THEME_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+)
+
+# only default themes (twenty*)
+mapfile -t DEFAULT_THEMES < <(
+  printf '%s\n' "${SOURCE_THEME_DIRS[@]}" | grep -E '^twenty[a-z0-9-]*$' || true
+)
+
+if [[ "${#DEFAULT_THEMES[@]}" -eq 0 ]]; then
+  log "no default themes found"
+  exit 0
+fi
+
+log "Default-Themes found:"
+printf '  - %s\n' "${DEFAULT_THEMES[@]}"
+
+for theme in "${DEFAULT_THEMES[@]}"; do
+  if [[ "$theme" == "$ACTIVE_THEME" ]]; then
+    log "keeping default theme: $theme"
+    continue
+  fi
+
+  if [[ -n "$PARENT_THEME" && "$theme" == "$PARENT_THEME" ]]; then
+    log "keeping Parent-Theme: $theme"
+    continue
+  fi
+
+  if ! wp theme is-installed "$theme" --path="$WP_PATH" --allow-root >/dev/null 2>&1; then
+    log "Skipping $theme (not installed)"
+    continue
+  fi
+
+  if [[ ! -d "$WP_PATH/wp-content/themes/$theme" ]]; then
+    log "Skipping $theme (no directory found)"
+    continue
+  fi
+
+  log "Deleting Default-Theme: $theme"
+  wp theme delete "$theme" --path="$WP_PATH" --allow-root
+done
+
+log "Pruning default themes finished"
+EOF
+ 
+# enable cronjob
 cat <<EOF > /etc/cron.d/wordpress
 # mnt hr  dy  mnth dow usr      cmd
   *   *   *   *    *   www-data /usr/bin/curl 'http://127.0.0.1/wp-cron.php' >/dev/null 2>&1
